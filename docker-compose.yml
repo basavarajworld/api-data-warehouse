@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: api_dw_postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Basavaraj@7639
+      POSTGRES_DB: weather_dw
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
