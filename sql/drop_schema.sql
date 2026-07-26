@@ -1,0 +1,21 @@
+BEGIN;
+
+DROP TABLE IF EXISTS bridge_issue_label CASCADE;
+DROP TABLE IF EXISTS bridge_issue_assignee CASCADE;
+
+DROP TABLE IF EXISTS bridge_pr_label CASCADE;
+DROP TABLE IF EXISTS bridge_pr_reviewer CASCADE;
+DROP TABLE IF EXISTS bridge_pr_assignee CASCADE;
+
+DROP TABLE IF EXISTS fact_repository_daily_metrics CASCADE;
+DROP TABLE IF EXISTS fact_reviews CASCADE;
+DROP TABLE IF EXISTS fact_issues CASCADE;
+DROP TABLE IF EXISTS fact_pull_requests CASCADE;
+DROP TABLE IF EXISTS fact_commits CASCADE;
+
+DROP TABLE IF EXISTS dim_label CASCADE;
+DROP TABLE IF EXISTS dim_date CASCADE;
+DROP TABLE IF EXISTS dim_repository CASCADE;
+DROP TABLE IF EXISTS dim_account CASCADE;
+
+COMMIT;
