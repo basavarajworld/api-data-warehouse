@@ -1,6 +1,3 @@
-from sqlalchemy import engine
-
-from src.database.schema import create_schema
 from src.database.date_dimension import populate_dim_date
 
 from src.etl.extract import (
@@ -50,11 +47,20 @@ from src.etl.load import (
     load_review,
 )
 
+from src.services.metadata_service import (
+    get_last_successful_run,
+    start_pipeline_run,
+    mark_pipeline_success,
+    mark_pipeline_failed,
+)
+
+
 OWNER = "microsoft"
 REPOSITORY = "vscode"
 
 
 def main():
+
     # Run only when creating/resetting the warehouse
     # create_schema()
 
@@ -70,36 +76,78 @@ def main():
         REPOSITORY,
     )
 
-    account = transform_account(repository["owner"])
+    account = transform_account(
+        repository["owner"]
+    )
+
     load_account(account)
 
-    repository_data = transform_repository(repository)
+    repository_data = transform_repository(
+        repository
+    )
+
     load_repository(repository_data)
 
     print("✅ Repository ETL completed.")
 
     # ============================================================
-    # Commits
+    # Commits - Incremental Load
     # ============================================================
 
-    commits = extract_commits(
-        OWNER,
-        REPOSITORY,
+    pipeline_name = "commits"
+
+    last_run = get_last_successful_run(
+        pipeline_name
     )
 
-    for commit in commits:
+    watermark = start_pipeline_run(
+        pipeline_name
+    )
 
-        ensure_account_exists(commit["author"])
-        ensure_account_exists(commit["committer"])
+    try:
 
-        commit_data = transform_commit(
-            commit,
-            repository["id"],
+        commits = extract_commits(
+            OWNER,
+            REPOSITORY,
+            since=last_run,
         )
 
-        load_commit(commit_data)
+        for commit in commits:
 
-    print("✅ Commit ETL completed.")
+            ensure_account_exists(
+                commit["author"]
+            )
+
+            ensure_account_exists(
+                commit["committer"]
+            )
+
+            commit_data = transform_commit(
+                commit,
+                repository["id"],
+            )
+
+            load_commit(commit_data)
+
+        mark_pipeline_success(
+            pipeline_name,
+            watermark,
+            len(commits),
+        )
+
+        print(
+            f"✅ Commit ETL completed. "
+            f"{len(commits)} commits processed."
+        )
+
+    except Exception as error:
+
+        mark_pipeline_failed(
+            pipeline_name,
+            str(error),
+        )
+
+        raise
 
     # ============================================================
     # Pull Requests
@@ -119,7 +167,9 @@ def main():
             pr["number"],
         )
 
-        ensure_account_exists(pr["user"])
+        ensure_account_exists(
+            pr["user"]
+        )
 
         pr_data = transform_pull_request(
             pr,
@@ -134,11 +184,19 @@ def main():
     # Labels
     # ============================================================
 
-    labels = extract_labels(pull_requests)
+    labels = extract_labels(
+        pull_requests
+    )
 
     for label in labels:
-        transformed_label = transform_label(label)
-        load_label(transformed_label)
+
+        transformed_label = transform_label(
+            label
+        )
+
+        load_label(
+            transformed_label
+        )
 
     # ============================================================
     # Reviews
@@ -170,14 +228,19 @@ def main():
             )
 
             if review.get("user"):
-                ensure_account_exists(review["user"])
+
+                ensure_account_exists(
+                    review["user"]
+                )
 
             transformed_review = transform_review(
                 review,
                 full_pr["id"],
             )
 
-            load_review(transformed_review)
+            load_review(
+                transformed_review
+            )
 
     print("✅ Review ETL completed.")
 
@@ -193,28 +256,47 @@ def main():
     for issue in issues:
 
         if issue.get("user"):
-            ensure_account_exists(issue["user"])
+
+            ensure_account_exists(
+                issue["user"]
+            )
 
         transformed_issue = transform_issue(
             issue,
             repository["id"],
         )
 
-        load_issue(transformed_issue)
+        load_issue(
+            transformed_issue
+        )
 
     print("✅ Issue ETL completed.")
 
-    labels = extract_labels(issues)
+    # ============================================================
+    # Issue Labels
+    # ============================================================
+
+    labels = extract_labels(
+        issues
+    )
 
     for label in labels:
-        transformed_label = transform_label(label)
-        load_label(transformed_label)
+
+        transformed_label = transform_label(
+            label
+        )
+
+        load_label(
+            transformed_label
+        )
 
     # ============================================================
     # Bridge PR Assignees
     # ============================================================
 
-    pr_assignees = extract_pr_assignees(pull_requests)
+    pr_assignees = extract_pr_assignees(
+        pull_requests
+    )
 
     for pr_assignee in pr_assignees:
 
@@ -222,10 +304,14 @@ def main():
             pr_assignee["assignee"]
         )
 
-        load_account(transformed_account)
+        load_account(
+            transformed_account
+        )
 
-        transformed_pr_assignee = transform_pr_assignee(
-            pr_assignee
+        transformed_pr_assignee = (
+            transform_pr_assignee(
+                pr_assignee
+            )
         )
 
         load_pr_assignee(
@@ -236,7 +322,9 @@ def main():
     # Bridge PR Labels
     # ============================================================
 
-    pr_labels = extract_pr_labels(pull_requests)
+    pr_labels = extract_pr_labels(
+        pull_requests
+    )
 
     for pr_label in pr_labels:
 
@@ -244,7 +332,9 @@ def main():
             pr_label["label"]
         )
 
-        load_label(transformed_label)
+        load_label(
+            transformed_label
+        )
 
         transformed = transform_pr_label(
             pr_label
@@ -258,7 +348,9 @@ def main():
     # Bridge PR Reviewers
     # ============================================================
 
-    pr_reviewers = extract_pr_reviewers(all_reviews)
+    pr_reviewers = extract_pr_reviewers(
+        all_reviews
+    )
 
     for pr_reviewer in pr_reviewers:
 
@@ -266,7 +358,9 @@ def main():
             pr_reviewer["reviewer"]
         )
 
-        load_account(transformed_account)
+        load_account(
+            transformed_account
+        )
 
         transformed = transform_pr_reviewer(
             pr_reviewer
@@ -276,40 +370,68 @@ def main():
             transformed
         )
 
-    print("🎉 GitHub Engineering Analytics ETL completed successfully.")
+    # ============================================================
+    # Bridge Issue Assignees
+    # ============================================================
 
-
-    issue_assignees = extract_issue_assignees(issues)
+    issue_assignees = extract_issue_assignees(
+        issues
+    )
 
     for issue_assignee in issue_assignees:
 
         transformed_account = transform_account(
             issue_assignee["assignee"]
         )
-        load_account(transformed_account)
+
+        load_account(
+            transformed_account
+        )
 
         transformed = transform_issue_assignee(
             issue_assignee
         )
-        load_issue_assignee(transformed)
 
+        load_issue_assignee(
+            transformed
+        )
 
-    issue_labels = extract_issue_labels(issues)
+    # ============================================================
+    # Bridge Issue Labels
+    # ============================================================
+
+    issue_labels = extract_issue_labels(
+        issues
+    )
 
     for issue_label in issue_labels:
 
         transformed_label = transform_label(
             issue_label["label"]
         )
-        load_label(transformed_label)
+
+        load_label(
+            transformed_label
+        )
 
         transformed = transform_issue_label(
             issue_label
         )
-        load_issue_label(transformed)  
 
+        load_issue_label(
+            transformed
+        )
 
-    load_repository_daily_metrics();      
+    # ============================================================
+    # Repository Daily Metrics
+    # ============================================================
+
+    load_repository_daily_metrics()
+
+    print(
+        "🎉 GitHub Engineering Analytics ETL "
+        "completed successfully."
+    )
 
 
 if __name__ == "__main__":
