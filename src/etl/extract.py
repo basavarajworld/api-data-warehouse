@@ -22,11 +22,19 @@ def extract_repository(owner: str, repo: str) -> dict:
     return get_repository(owner, repo)
 
 
-def extract_commits(owner: str, repo: str) -> list:
+def extract_commits(
+    owner: str,
+    repo: str,
+    since=None,
+) -> list:
     """Extract repository commits."""
 
     logger.info("Extracting commits...")
-    return get_commits(owner, repo)
+    return get_commits(
+        owner,
+        repo,
+        since=since,
+    )
 
 
 def extract_issues(owner: str, repo: str) -> list:
@@ -42,6 +50,7 @@ def extract_pull_requests(owner: str, repo: str) -> list:
     logger.info("Extracting pull requests...")
     return get_pull_requests(owner, repo)
 
+
 def extract_pull_request(owner, repository, pull_number):
     return get_pull_request(
         owner,
@@ -50,18 +59,38 @@ def extract_pull_request(owner, repository, pull_number):
     )
 
 
-def extract_pull_request_details(owner: str, repo: str, pull_number: int) -> dict:
+def extract_pull_request_details(
+    owner: str,
+    repo: str,
+    pull_number: int,
+) -> dict:
     """Extract detailed information for a pull request."""
 
     logger.info("Extracting pull request #%s...", pull_number)
-    return get_pull_request_details(owner, repo, pull_number)
+    return get_pull_request_details(
+        owner,
+        repo,
+        pull_number,
+    )
 
 
-def extract_reviews(owner: str, repo: str, pull_number: int) -> list:
+def extract_reviews(
+    owner: str,
+    repo: str,
+    pull_number: int,
+) -> list:
     """Extract pull request reviews."""
 
-    logger.info("Extracting reviews for pull request #%s...", pull_number)
-    return get_reviews(owner, repo, pull_number)
+    logger.info(
+        "Extracting reviews for pull request #%s...",
+        pull_number,
+    )
+
+    return get_reviews(
+        owner,
+        repo,
+        pull_number,
+    )
 
 
 def extract_contributors(owner: str, repo: str) -> list:
@@ -72,7 +101,7 @@ def extract_contributors(owner: str, repo: str) -> list:
 
 
 def extract_languages(owner: str, repo: str) -> dict:
-    """Extract repository language statistics."""
+    """Extract repository languages."""
 
     logger.info("Extracting languages...")
     return get_languages(owner, repo)
@@ -81,17 +110,9 @@ def extract_languages(owner: str, repo: str) -> dict:
 def extract_releases(owner: str, repo: str) -> list:
     """Extract repository releases."""
 
-    logger.info("Extracting releases...")
+    logger.info("Extracting repository releases...")
     return get_releases(owner, repo)
 
-def extract_issues(owner: str, repo: str) -> list:
-    """
-    Extract issues from GitHub.
-    """
-
-    logger.info("Extracting issues...")
-
-    return get_issues(owner, repo)
 
 def extract_labels(items: list) -> list:
     """
@@ -107,6 +128,7 @@ def extract_labels(items: list) -> list:
 
     return labels
 
+
 def extract_pr_assignees(pull_requests):
 
     assignees = []
@@ -118,11 +140,12 @@ def extract_pr_assignees(pull_requests):
             assignees.append(
                 {
                     "github_pr_id": pr["id"],
-                    "assignee": assignee
+                    "assignee": assignee,
                 }
             )
 
     return assignees
+
 
 def extract_pr_reviewers(reviews):
 
@@ -132,51 +155,65 @@ def extract_pr_reviewers(reviews):
 
         if item["review"].get("user"):
 
-            reviewers.append({
-                "github_pr_id": item["github_pr_id"],
-                "reviewer": item["review"]["user"]
-            })
+            reviewers.append(
+                {
+                    "github_pr_id": item["github_pr_id"],
+                    "reviewer": item["review"]["user"],
+                }
+            )
 
     return reviewers
+
 
 def extract_pr_labels(pull_requests):
 
     labels = []
 
     for pr in pull_requests:
+
         for label in pr.get("labels", []):
 
-            labels.append({
-                "github_pr_id": pr["id"],
-                "label": label
-            })
+            labels.append(
+                {
+                    "github_pr_id": pr["id"],
+                    "label": label,
+                }
+            )
 
     return labels
+
 
 def extract_issue_assignees(issues):
 
     assignees = []
 
     for issue in issues:
+
         for assignee in issue.get("assignees", []):
 
-            assignees.append({
-                "github_issue_id": issue["id"],
-                "assignee": assignee,
-            })
+            assignees.append(
+                {
+                    "github_issue_id": issue["id"],
+                    "assignee": assignee,
+                }
+            )
 
     return assignees
+
 
 def extract_issue_labels(issues):
 
     labels = []
 
     for issue in issues:
+
         for label in issue.get("labels", []):
 
-            labels.append({
-                "github_issue_id": issue["id"],
-                "label": label,
-            })
+            labels.append(
+                {
+                    "github_issue_id": issue["id"],
+                    "label": label,
+                }
+            )
 
     return labels
